@@ -1,11 +1,13 @@
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
 const axios = require('axios');
 require('dotenv').config();
 const token = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 let userStates = {};
-
+const app = express();
+const port = process.env.PORT || 3000;
 function sendWelcomeMessage(chatId) {
     const welcomeMessage = `🚩 Вітаю, гэта yoohivebot, напішы каманду /startbel, каб працягнуць на беларускай мове. З маёй дапамогай ты можаш адшукаць, паслугі, што цікавяць цябе, у сваім горадзе.\n\n` +
         `🚩 Привет, это yoohivebot, напиши команду /startru, чтобы продолжить на русском языке. С моей помощью ты можешь найти, интересующие тебя услуги в своём городе.\n\n` +
@@ -179,4 +181,9 @@ bot.onText(/skip/, (msg) => {
 
     userState.stage = 'search';
     bot.sendMessage(chatId, messages.enterService[userState.lang]);
+});
+
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Telegram bot is running.`);
 });
