@@ -1,13 +1,22 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+const bodyParser = require('body-parser');
 const axios = require('axios');
 require('dotenv').config();
-const token = process.env.TELEGRAM_TOKEN;
-const bot = new TelegramBot(token, { polling: true });
 
-let userStates = {};
+const token = process.env.TELEGRAM_TOKEN;
+const bot = new TelegramBot(token);
 const app = express();
 const port = process.env.PORT || 3000;
+
+app.use(bodyParser.json());
+
+bot.setWebHook(`https://yoohive-bot.onrender.com/${token}`);
+
+app.post(`/${token}`, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+});
 function sendWelcomeMessage(chatId) {
     const welcomeMessage = `🚩 Вітаю, гэта yoohivebot, напішы каманду /startbel, каб працягнуць на беларускай мове. З маёй дапамогай ты можаш адшукаць, паслугі, што цікавяць цябе, у сваім горадзе.\n\n` +
         `🚩 Привет, это yoohivebot, напиши команду /startru, чтобы продолжить на русском языке. С моей помощью ты можешь найти, интересующие тебя услуги в своём городе.\n\n` +
