@@ -10,10 +10,13 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-
+let userStates = {};
+// Установка Webhook
 bot.setWebHook(`https://yoohive-bot.onrender.com/${token}`);
 
+// Обработка обновлений от Telegram
 app.post(`/${token}`, (req, res) => {
+    console.log("Received POST request:", req.body);
     bot.processUpdate(req.body);
     res.sendStatus(200);
 });
