@@ -10,16 +10,20 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
+
 let userStates = {};
-// Установка Webhook
+
 bot.setWebHook(`https://yoohive-bot.onrender.com/${token}`);
 
-// Обработка обновлений от Telegram
 app.post(`/${token}`, (req, res) => {
     console.log("Received POST request:", req.body);
     bot.processUpdate(req.body);
     res.sendStatus(200);
 });
+
+app.get('/hello', (req, res) => {
+    res.json('Hello');
+})
 function sendWelcomeMessage(chatId) {
     const welcomeMessage = `🚩 Вітаю, гэта yoohivebot, напішы каманду /startbel, каб працягнуць на беларускай мове. З маёй дапамогай ты можаш адшукаць, паслугі, што цікавяць цябе, у сваім горадзе.\n\n` +
         `🚩 Привет, это yoohivebot, напиши команду /startru, чтобы продолжить на русском языке. С моей помощью ты можешь найти, интересующие тебя услуги в своём городе.\n\n` +
