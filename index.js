@@ -17,7 +17,7 @@ bot.setWebHook(`https://yoohive-bot.onrender.com/${token}`);
 
 app.post(`/${token}`, (req, res) => {
     console.log("Received POST request:", req.body);
-    bot.processUpdate(req.body);
+    // bot.processUpdate(req.body);
     res.sendStatus(200);
 });
 
