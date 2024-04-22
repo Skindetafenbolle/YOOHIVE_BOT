@@ -13,7 +13,7 @@ app.use(bodyParser.json());
 
 let userStates = {};
 
-bot.setWebHook(`https://yoohive-bot.onrender.com/${token}`);
+bot.setWebHook(`https://b173-77-91-102-66.ngrok-free.app//${token}`);
 
 app.post(`/${token}`, (req, res) => {
     console.log("Received POST request:", req.body);
