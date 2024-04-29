@@ -17,7 +17,7 @@ bot.setWebHook(`https://b173-77-91-102-66.ngrok-free.app//${token}`);
 
 app.post(`/${token}`, (req, res) => {
     console.log("Received POST request:", req.body);
-    bot.processUpdate(req.body);
+    // bot.processUpdate(req.body);
     res.sendStatus(200);
 });
 
