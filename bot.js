@@ -60,7 +60,6 @@ bot.on('text', (msg) => {
     }
 });
 
-
 function sendCitySelectionKeyboard(chatId, messageId) {
     let cityName;
     switch (selMsg) {
@@ -107,13 +106,66 @@ function sendCitySelectionKeyboard(chatId, messageId) {
     }
 }
 
+async function getCompanyByName(chatId, messageId, companyName) {
+    console.log("Message ID:", messageId);
+
+    let apiUrl = `https://yoohive-api-test-version.onrender.com/api/company/name/${companyName}`;
+    try {
+        const response = await axios.get(apiUrl);
+        console.log(apiUrl)
+        const companyData = response.data;
+        let insta = '';
+
+        let messageText = `*${companyData.name}*\n\n`;
+        if(companyData.description){
+            messageText += `📝 ${companyData.description || 'Н/Д'}\n`;
+        }
+        messageText += `📍 ${companyData.address || 'Н/Д'}\n\n`;
+
+        if (companyData.companymetadatums && companyData.companymetadatums.length > 0) {
+            const socialMediaMetadata = companyData.companymetadatums.find(metadata => metadata.type === 'socialMediaLinks');
+            const images = companyData.companymetadatums.find(metadata => metadata.type === 'images');
+            const phones = companyData.companymetadatums.find(metadata => metadata.type === 'phones');
+            const phoneNumbers = phones.value.join(', ');
+            messageText += `☎️ ${phoneNumbers}\n`;
+            if (images && images.value && images.value.length > 0) {
+                const imageUrl = images.value[0];
+                const inlineKeyboard = [];
+                messageText += `Фото: [Изображение](${imageUrl})\n`;
+                if (socialMediaMetadata && socialMediaMetadata.value && socialMediaMetadata.value.length > 0) {
+                    insta = socialMediaMetadata.value.find(link => link.includes('instagram.com'));
+                }
+
+                const companyLinkButton = { text: 'Перейти на сайт компании', url: `https://yoohive.pl/${encodeURIComponent(companyData.name)}` };
+                const backButton = { text: 'Вернуться к выбору компании', callback_data: 'back_to_company_selection' };
+
+                let inlineKeyboardRow = [];
+                if (insta) {
+                    const instaButton = { text: 'Instagram 📸', url: insta };
+                    inlineKeyboardRow.push(instaButton);
+                }
+                inlineKeyboardRow.push(companyLinkButton);
+                inlineKeyboard.push(inlineKeyboardRow);
+                inlineKeyboard.push([backButton]);
+
+                await bot.editMessageText(messageText, {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: inlineKeyboard }
+                });
+            }
+        }
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 bot.on('callback_query', (callbackQuery) => {
     const data = callbackQuery.data;
     const chatId = callbackQuery.message.chat.id;
     const messageId = callbackQuery.message.message_id;
-    category = data;
-    companyName = data;
-
 
     switch (data) {
         case 'city_warszawa':
@@ -138,6 +190,7 @@ bot.on('callback_query', (callbackQuery) => {
             break;
         case 'region_Wola':
             region = 'Wola';
+            console.log(region)
             sendCategoriesKeyboard(chatId, messageId);
             break;
         case 'region_Śródmieście':
@@ -205,86 +258,73 @@ bot.on('callback_query', (callbackQuery) => {
             region = 'Warszawa';
             sendCategoriesKeyboard(chatId, messageId);
             break;
+        case 'back_to_company_selection':
+            search(chatId, messageId, category, region);
+            break;
+        case 'back_to_category_selection':
+            sendCategoriesKeyboard(chatId, messageId);
+            break;
     }
     if (data.startsWith('company_')) {
-        const companyName = data.replace('company_', '');
+        companyName = data.replace('company_', '');
         console.log(companyName)
         getCompanyByName(chatId, messageId, companyName);
     } else if (data.startsWith('category_')) {
-        const category = data.replace('category_', '');
+        category = data.replace('category_', '');
         console.log(category)
-        search(chatId, messageId, category);
+        search(chatId, messageId, category, region);
     }
 
     bot.answerCallbackQuery(callbackQuery.id);
 });
 
-async function getCompanyByName(chatId, messageId, companyName) {
-    let apiUrl = `https://yoohive-api-test-version.onrender.com/api/company/name/${companyName}`;
-    try {
-        const response = await axios.get(apiUrl);
-        const companyData = response.data;
-        let insta = '';
-
-        let messageText = `*${companyData.name}*\n\n`;
-        messageText += `*Описание:* ${companyData.description || 'Н/Д'}\n`;
-        messageText += `*Адрес:* ${companyData.address || 'Н/Д'}\n\n`;
-
-        if (companyData.companymetadatums && companyData.companymetadatums.length > 0) {
-            const socialMediaMetadata = companyData.companymetadatums.find(metadata => metadata.type === 'socialMediaLinks');
-            const images = companyData.companymetadatums.find(metadata => metadata.type === 'images');
-            const phones = companyData.companymetadatums.find(metadata => metadata.type === 'phones');
-
-            if (images && images.value && images.value.length > 0) {
-                // Получаем URL первого изображения
-                const imageUrl = images.value[0];
-                // Формируем объект InlineKeyboardMarkup с кнопками
-                const inlineKeyboard = [];
-                if (socialMediaMetadata && socialMediaMetadata.value && socialMediaMetadata.value.length > 0) {
-                    insta = socialMediaMetadata.value.find(link => link.includes('instagram.com'));
-                }
-
-                const companyLinkButton = { text: 'Перейти на сайт компании', url: `https://yoohive.pl/${encodeURIComponent(companyData.name)}` };
-                const backButton = { text: 'Вернуться к выбору компании', callback_data: 'back_to_region_selection' };
-
-                let inlineKeyboardRow = [];
-                if (insta) {
-                    const instaButton = { text: 'Instagram', url: insta };
-                    inlineKeyboardRow.push(instaButton);
-                }
-                inlineKeyboardRow.push(companyLinkButton);
-                inlineKeyboard.push(inlineKeyboardRow);
-                inlineKeyboard.push([backButton]);
-
-                // Отправляем сообщение с фотографией, описанием и кнопками
-                await bot.sendPhoto(chatId, imageUrl, { caption: messageText, parse_mode: 'Markdown', reply_markup: { inline_keyboard: inlineKeyboard } });
-            }
-
-        }
-
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-
-async function search(chatId, messageId, category) {
-    let apiUrl = `https://yoohive-api-test-version.onrender.com/api/company/search?categoryName=${encodeURIComponent(category)}&city=${encodeURIComponent(region)}&page=1&perPage=3`;
+async function search(chatId, messageId, category, region) {
+    let apiUrl = `https://yoohive-api-test-version.onrender.com/api/company/search?categoryName=${encodeURIComponent(category)}&city=${encodeURIComponent(region)}&page=1&perPage=10`;
+    console.log(category);
     if (tags) {
         apiUrl += `&tags=${encodeURIComponent(tags.join(','))}`;
     }
 
+    function chunkArray(array, size) {
+        const chunkedArr = [];
+        for (let i = 0; i < array.length; i += size) {
+            chunkedArr.push(array.slice(i, i + size));
+        }
+        return chunkedArr;
+    }
     try {
-        console.log(apiUrl)
+        console.log(apiUrl);
         const response = await axios.get(apiUrl);
         const companies = response.data.companies;
+        console.log(companies)
+        const chunkedCompanies = chunkArray(companies, 5);
 
-        const inlineKeyboard = companies.map(company => [{
-            text: String(company.name).trim(),
-            callback_data: `company_${String(company.name).trim()}`,
-        }]);
+        const columns = chunkedCompanies.map(chunk => {
+            return chunk.map(company => ({
+                text: String(company.name).trim(),
+                callback_data: `company_${String(company.name).trim()}`,
+            }));
+        });
 
-        inlineKeyboard.push([{ text: '⬅️ Назад к выбору категории', callback_data: 'back_to_region_selection' }]);
+        const inlineKeyboard = [];
+
+        if (columns[0] && columns[1]) {
+            const maxLength = Math.max(columns[0].length, columns[1].length);
+
+            for (let i = 0; i < maxLength; i++) {
+                const row = [];
+                if (columns[0][i]) {
+                    row.push(columns[0][i]);
+                }
+                if (columns[1][i]) {
+                    row.push(columns[1][i]);
+                }
+                inlineKeyboard.push(row);
+            }
+        }
+
+        inlineKeyboard.push([{ text: '⬅️', callback_data: 'beauty' }]);
+        inlineKeyboard.push([{ text: 'Остальные компании', url: `https://yoohive.pl/${category}` }]);
 
         const options = {
             reply_markup: {
@@ -295,7 +335,7 @@ async function search(chatId, messageId, category) {
         bot.editMessageText('Выберите компанию', {
             chat_id: chatId,
             message_id: messageId,
-            reply_markup: options.reply_markup
+            reply_markup: options.reply_markup,
         }).catch(error => {
             console.error('Error editing message text:', error);
         });
@@ -304,9 +344,7 @@ async function search(chatId, messageId, category) {
     }
 }
 
-
-
-async function sendCategoriesKeyboard_API(chatId, messageId, category) {
+async function sendCategoriesKeyboard_API(chatId, messageId) {
     const apiUrl = `https://yoohive-api-test-version.onrender.com/api/category/all`;
     function chunkArray(array, size) {
         const chunkedArr = [];
@@ -319,8 +357,8 @@ async function sendCategoriesKeyboard_API(chatId, messageId, category) {
         case 'ru':
             try {
                 const response = await axios.get(apiUrl);
-                const categories = response.data;
-
+                const categories = response.data.slice(0, 9);
+                console.log(categories)
                 const categoryNames = categories.map(category => category.name);
                 const categoryNamesString = categoryNames.join(',');
                 console.log(categoryNamesString);
@@ -339,7 +377,7 @@ async function sendCategoriesKeyboard_API(chatId, messageId, category) {
                                 callback_data: `category_${service.trim()}`,
                             }));
                     });
-                inlineKeyboard.push([{ text: '⬅️ Назад к выбору категории', callback_data: 'back_to_region_selection' }]);
+                inlineKeyboard.push([{ text: '⬅️ Назад к выбору категории', callback_data: 'back_to_category_selection' }]);
                 const options = {
                     reply_markup: {
                         inline_keyboard: inlineKeyboard,
@@ -380,7 +418,7 @@ async function sendCategoriesKeyboard_API(chatId, messageId, category) {
                                 callback_data: service.trim(),
                             }));
                     });
-                inlineKeyboard.push([{ text:'⬅️ Powrót do wyboru kategorii', callback_data: 'region_wola' }]);
+                inlineKeyboard.push([{ text:'⬅️ Powrót do wyboru kategorii', callback_data: 'back_to_category_selection' }]);
 
                 const options = {
                     reply_markup: {
@@ -423,7 +461,7 @@ async function sendCategoriesKeyboard_API(chatId, messageId, category) {
                             }));
                     });
 
-                inlineKeyboard.push([{ text:'⬅️ Назад до вибору категорії', callback_data: 'region_wola' }]);
+                inlineKeyboard.push([{ text:'⬅️ Назад до вибору категорії', callback_data: 'back_to_category_selection' }]);
 
                 const options = {
                     reply_markup: {
@@ -466,7 +504,7 @@ async function sendCategoriesKeyboard_API(chatId, messageId, category) {
                             }));
                     });
 
-                inlineKeyboard.push([{ text:'⬅️ Назад да выбару катэгорыі', callback_data: 'region_wola' }]);
+                inlineKeyboard.push([{ text:'⬅️ Назад да выбару катэгорыі', callback_data: 'back_to_category_selection' }]);
 
                 const options = {
                     reply_markup: {
@@ -487,8 +525,6 @@ async function sendCategoriesKeyboard_API(chatId, messageId, category) {
             break;
     }
 }
-
-
 
 function sendCategoriesKeyboard(chatId, messageId) {
     let options;
@@ -568,185 +604,48 @@ function sendCategoriesKeyboard(chatId, messageId) {
     }
 }
 
-
 function sendWarsawRegionsKeyboard(chatId, messageId) {
+    let keyboard = {
+        inline_keyboard: [
+            [
+                { text: 'Mokotów', callback_data: 'region_Mokotów' },
+                { text: 'Ochota', callback_data: 'region_Ochota' },
+                { text: 'Wola', callback_data: 'region_Wola' },
+                { text: 'Śródmieście', callback_data: 'region_Śródmieście' },
+                { text: 'Żoliborz', callback_data: 'region_Żoliborz' }
+            ],
+            [
+                { text: 'Wesoła', callback_data: 'region_Wesoła' },
+                { text: 'Wilanów', callback_data: 'region_Wilanów' },
+                { text: 'Bemowo', callback_data: 'region_bemowo' },
+                { text: 'Białołęka', callback_data: 'region_Białołęka' },
+                { text: 'Bielany', callback_data: 'region_Bielany' }
+            ],
+            [
+                { text: 'Rembertów', callback_data: 'region_Rembertów' },
+                { text: 'Targówek', callback_data: 'region_Targówek' },
+                { text: 'Ursus', callback_data: 'region_Ursus' },
+                { text: 'Ursynów', callback_data: 'region_Ursynów' },
+                { text: 'Wawer', callback_data: 'region_Wawer' }
+            ],
+            [
+                { text: 'Praga Południe', callback_data: 'region_Południe' },
+                { text: 'Praga Północ', callback_data: 'region_Północ' },
+                { text: 'Włochy', callback_data: 'region_Włochy' }
+            ],
+            [
+                { text: 'All', callback_data: 'region_all' }
+            ],
+            [
+                { text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }
+            ]
+        ]
+    };
 
-    switch (selMsg) {
-    case 'ru':
-        bot.editMessageText('Выберите регион Варшавы', {
-            chat_id: chatId,
-            message_id: messageId,
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Mokotów', callback_data: 'region_Mokotów' },
-                        { text: 'Ochota', callback_data: 'region_Ochota' },
-                        { text: 'Wola', callback_data: 'region_Wola' },
-                        { text: 'Śródmieście', callback_data: 'region_Śródmieście' },
-                        { text: 'Żoliborz', callback_data: 'region_Żoliborz' }
-                    ],
-                    [
-                        { text: 'Wesoła', callback_data: 'region_Wesoła' },
-                        { text: 'Wilanów', callback_data: 'region_Wilanów' },
-                        { text: 'Bemowo', callback_data: 'region_bemowo' },
-                        { text: 'Białołęka', callback_data: 'region_Białołęka' },
-                        { text: 'Bielany', callback_data: 'region_Bielany' }
-                    ],
-                    [
-                        { text: 'Rembertów', callback_data: 'region_Rembertów' },
-                        { text: 'Targówek', callback_data: 'region_Targówek' },
-                        { text: 'Ursus', callback_data: 'region_Ursus' },
-                        { text: 'Ursynów', callback_data: 'region_Ursynów' },
-                        { text: 'Wawer', callback_data: 'region_Wawer' }
-                    ],
-                    [
-                        { text: 'Praga Południe', callback_data: 'region_Południe' },
-                        { text: 'Praga Północ', callback_data: 'region_Północ' },
-                        { text: 'Włochy', callback_data: 'region_Włochy' }
-                    ],
-                    [
-                        { text: 'All', callback_data: 'region_all' }
-                    ],
-                    [
-                        { text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }
-                    ]
-                ]
-            }
-        }).catch(error => {
-            console.error('Error editing message text:', error);
-        });
-        break;
-    case 'pl':
-        bot.editMessageText('Wybierz region Warszawy', {
-            chat_id: chatId,
-            message_id: messageId,
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Mokotów', callback_data: 'region_Mokotów' },
-                        { text: 'Ochota', callback_data: 'region_Ochota' },
-                        { text: 'Wola', callback_data: 'region_Wola' },
-                        { text: 'Śródmieście', callback_data: 'region_Śródmieście' },
-                        { text: 'Żoliborz', callback_data: 'region_Żoliborz' }
-                    ],
-                    [
-                        { text: 'Wesoła', callback_data: 'region_Wesoła' },
-                        { text: 'Wilanów', callback_data: 'region_Wilanów' },
-                        { text: 'Bemowo', callback_data: 'region_bemowo' },
-                        { text: 'Białołęka', callback_data: 'region_Białołęka' },
-                        { text: 'Bielany', callback_data: 'region_Bielany' }
-                    ],
-                    [
-                        { text: 'Rembertów', callback_data: 'region_Rembertów' },
-                        { text: 'Targówek', callback_data: 'region_Targówek' },
-                        { text: 'Ursus', callback_data: 'region_Ursus' },
-                        { text: 'Ursynów', callback_data: 'region_Ursynów' },
-                        { text: 'Wawer', callback_data: 'region_Wawer' }
-                    ],
-                    [
-                        { text: 'Praga Południe', callback_data: 'region_Południe' },
-                        { text: 'Praga Północ', callback_data: 'region_Północ' },
-                        { text: 'Włochy', callback_data: 'region_Włochy' }
-                    ],
-                    [
-                        { text: 'All', callback_data: 'region_all' }
-                    ],
-                    [
-                        { text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }
-                    ]
-                ]
-            }
-        }).catch(error => {
-            console.error('Error editing message text:', error);
-        });
-        break;
-    case 'ua':
-        bot.editMessageText('Виберіть регіон Варшави', {
-            chat_id: chatId,
-            message_id: messageId,
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Mokotów', callback_data: 'region_Mokotów' },
-                        { text: 'Ochota', callback_data: 'region_Ochota' },
-                        { text: 'Wola', callback_data: 'region_Wola' },
-                        { text: 'Śródmieście', callback_data: 'region_Śródmieście' },
-                        { text: 'Żoliborz', callback_data: 'region_Żoliborz' }
-                    ],
-                    [
-                        { text: 'Wesoła', callback_data: 'region_Wesoła' },
-                        { text: 'Wilanów', callback_data: 'region_Wilanów' },
-                        { text: 'Bemowo', callback_data: 'region_bemowo' },
-                        { text: 'Białołęka', callback_data: 'region_Białołęka' },
-                        { text: 'Bielany', callback_data: 'region_Bielany' }
-                    ],
-                    [
-                        { text: 'Rembertów', callback_data: 'region_Rembertów' },
-                        { text: 'Targówek', callback_data: 'region_Targówek' },
-                        { text: 'Ursus', callback_data: 'region_Ursus' },
-                        { text: 'Ursynów', callback_data: 'region_Ursynów' },
-                        { text: 'Wawer', callback_data: 'region_Wawer' }
-                    ],
-                    [
-                        { text: 'Praga Południe', callback_data: 'region_Południe' },
-                        { text: 'Praga Północ', callback_data: 'region_Północ' },
-                        { text: 'Włochy', callback_data: 'region_Włochy' }
-                    ],
-                    [
-                        { text: 'All', callback_data: 'region_all' }
-                    ],
-                    [
-                        { text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }
-                    ]
-                ]
-            }
-        }).catch(error => {
-            console.error('Error editing message text:', error);
-        });
-        break;
-    case 'by':
-        bot.editMessageText('Выберыце рэгіён Варшавы', {
-            chat_id: chatId,
-            message_id: messageId,
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Mokotów', callback_data: 'region_Mokotów' },
-                        { text: 'Ochota', callback_data: 'region_Ochota' },
-                        { text: 'Wola', callback_data: 'region_Wola' },
-                        { text: 'Śródmieście', callback_data: 'region_Śródmieście' },
-                        { text: 'Żoliborz', callback_data: 'region_Żoliborz' }
-                    ],
-                    [
-                        { text: 'Wesoła', callback_data: 'region_Wesoła' },
-                        { text: 'Wilanów', callback_data: 'region_Wilanów' },
-                        { text: 'Bemowo', callback_data: 'region_bemowo' },
-                        { text: 'Białołęka', callback_data: 'region_Białołęka' },
-                        { text: 'Bielany', callback_data: 'region_Bielany' }
-                    ],
-                    [
-                        { text: 'Rembertów', callback_data: 'region_Rembertów' },
-                        { text: 'Targówek', callback_data: 'region_Targówek' },
-                        { text: 'Ursus', callback_data: 'region_Ursus' },
-                        { text: 'Ursynów', callback_data: 'region_Ursynów' },
-                        { text: 'Wawer', callback_data: 'region_Wawer' }
-                    ],
-                    [
-                        { text: 'Praga Południe', callback_data: 'region_Południe' },
-                        { text: 'Praga Północ', callback_data: 'region_Północ' },
-                        { text: 'Włochy', callback_data: 'region_Włochy' }
-                    ],
-                    [
-                        { text: 'All', callback_data: 'region_all' }
-                    ],
-                    [
-                        { text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }
-                    ]
-                ]
-            }
-        }).catch(error => {
-            console.error('Error editing message text:', error);
-        });
-        break;
-    }
+    bot.editMessageReplyMarkup(keyboard, {
+        chat_id: chatId,
+        message_id: messageId
+    }).catch(error => {
+        console.error('Error editing message reply markup:', error);
+    });
 }
