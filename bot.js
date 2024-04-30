@@ -1,14 +1,16 @@
 const TelegramBot = require('node-telegram-bot-api');
+const dotenv = require('dotenv');
 
-const token = '6863474147:AAE_jPXTgCLr2IYHYNgmzteTURB_9Jm5y5g';
-
-const bot = new TelegramBot(token, { polling: true });
+dotenv.config();
+const urlAPI = process.env.URL_API;
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const axios = require('axios');
 
 let chatState = {};
 let region;
 let tags;
 let category;
+let subcategory;
 let selMsg;
 let companyName;
 
@@ -16,12 +18,14 @@ function sendWelcomeMessage(chatId) {
     const welcomeMessage = `🇵🇱 Wybierz język poniżej, aby kontynuować po polsku.\n\n` +
         `🇧🇾 Выберы мову ніжэй, каб працягнуць на беларускай мове.\n\n` +
         `🇷🇺 Выбери язык ниже, чтобы продолжить на русском языке.\n\n` +
-        `🇺🇦 Вибери мову нижче, щоб продовжити українською мовою.`;
+        `🇺🇦 Вибери мову нижче, щоб продовжити українською мовою.\n\n` +
+        `🇬🇧 Select a language below to continue in English.`;
     bot.sendMessage(chatId, welcomeMessage, {
         reply_markup: {
             keyboard: [
-                ['🇵🇱 Polski','🇧🇾 Беларуская'],
-                ['🇷🇺 Русский','🇺🇦 Українська']
+                ['🇬🇧 English','🇧🇾 Беларуская'],
+                ['🇷🇺 Русский','🇺🇦 Українська'],
+                ['🇵🇱 Polski']
             ],
             one_time_keyboard: true,
             selective: true
@@ -57,6 +61,10 @@ bot.on('text', (msg) => {
             selMsg = 'ua'
             sendCitySelectionKeyboard(chatId);
             break;
+        case '🇬🇧 English':
+            selMsg = 'eng'
+            sendCitySelectionKeyboard(chatId);
+            break;
     }
 });
 
@@ -74,6 +82,9 @@ function sendCitySelectionKeyboard(chatId, messageId) {
             break;
         case 'ua':
             cityName = 'Виберіть місто';
+            break;
+        case 'eng':
+            cityName = 'Choose place';
             break;
     }
 
@@ -107,9 +118,8 @@ function sendCitySelectionKeyboard(chatId, messageId) {
 }
 
 async function getCompanyByName(chatId, messageId, companyName) {
-    console.log("Message ID:", messageId);
 
-    let apiUrl = `https://yoohive-api-test-version.onrender.com/api/company/name/${companyName}`;
+    let apiUrl = `${urlAPI}/api/company/name/${companyName}`;
     try {
         const response = await axios.get(apiUrl);
         console.log(apiUrl)
@@ -177,127 +187,79 @@ bot.on('callback_query', (callbackQuery) => {
         case 'back_to_region_selection':
             sendWarsawRegionsKeyboard(chatId, messageId);
             break;
-        case 'beauty':
-            sendCategoriesKeyboard_API(chatId, messageId);
-            break;
-        case 'region_Mokotów':
-            region = 'Mokotów';
+        case 'back_to_category_selection':
             sendCategoriesKeyboard(chatId, messageId);
             break;
-        case 'region_Ochota':
-            region = 'Ochota';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Wola':
-            region = 'Wola';
-            console.log(region)
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Śródmieście':
-            region = 'Śródmieście';
-            console.log(region)
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Żoliborz':
-            region = 'Żoliborz';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Południe':
-            region = 'Praga Południe';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Północ':
-            region = 'Praga Północ';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_bemowo':
-            region = 'Bemowo';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Białołęka':
-            region = 'Białołęka';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Bielany':
-            region = 'Bielany';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Rembertów':
-            region = 'Rembertów';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Targówek':
-            region = 'Targówek';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Ursus':
-            region = 'Ursus';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Ursynów':
-            region = 'Ursynów';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Wawer':
-            region = 'Wawer';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Wesoła':
-            region = 'Wesoła';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Wilanów':
-            region = 'Wilanów';
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
-        case 'region_Włochy':
-            region = 'Włochy';
-            sendCategoriesKeyboard(chatId, messageId);
+        case 'back_to_company_selection':
+            search(chatId, messageId, subcategory, region);
             break;
         case 'region_all':
             region = 'Warszawa';
             sendCategoriesKeyboard(chatId, messageId);
             break;
-        case 'back_to_company_selection':
-            search(chatId, messageId, category, region);
-            break;
-        case 'back_to_category_selection':
-            sendCategoriesKeyboard(chatId, messageId);
-            break;
+
     }
-    if (data.startsWith('company_')) {
+    if (data.startsWith('region_')) {
+        region = data.replace('region_', '');
+        sendCategoriesKeyboard(chatId, messageId);
+        console.log(region)
+    } else if (data.startsWith('company_')) {
         companyName = data.replace('company_', '');
         console.log(companyName)
         getCompanyByName(chatId, messageId, companyName);
     } else if (data.startsWith('category_')) {
         category = data.replace('category_', '');
         console.log(category)
-        search(chatId, messageId, category, region);
+        sendSubCategoriesKeyboard(chatId, messageId, category);
+    } else if (data.startsWith('subcategory_')) {
+        subcategory = data.replace('subcategory_', '');
+        console.log(subcategory)
+        search(chatId, messageId, subcategory, region);
     }
 
     bot.answerCallbackQuery(callbackQuery.id);
 });
-
-async function search(chatId, messageId, category, region) {
-    let apiUrl = `https://yoohive-api-test-version.onrender.com/api/company/search?categoryName=${encodeURIComponent(category)}&city=${encodeURIComponent(region)}&page=1&perPage=10`;
-    console.log(category);
+function chunkArray(array, size) {
+    const chunkedArr = [];
+    for (let i = 0; i < array.length; i += size) {
+        chunkedArr.push(array.slice(i, i + size));
+    }
+    return chunkedArr;
+}
+async function search(chatId, messageId, subcategory, region) {
+    let apiUrl = `${urlAPI}/api/company/search?categoryName=${encodeURIComponent(subcategory)}&city=${encodeURIComponent(region)}&page=1&perPage=10`;
+    console.log(subcategory);
     if (tags) {
         apiUrl += `&tags=${encodeURIComponent(tags.join(','))}`;
-    }
-
-    function chunkArray(array, size) {
-        const chunkedArr = [];
-        for (let i = 0; i < array.length; i += size) {
-            chunkedArr.push(array.slice(i, i + size));
-        }
-        return chunkedArr;
     }
     try {
         console.log(apiUrl);
         const response = await axios.get(apiUrl);
         const companies = response.data.companies;
-        console.log(companies)
-        const chunkedCompanies = chunkArray(companies, 5);
+        console.log(companies);
+
+        if (companies.length === 0) {
+            const options = {
+                reply_markup: {
+                    inline_keyboard: [[{ text: '⬅️', callback_data: `category_${category}` }]],
+                },
+            };
+            bot.editMessageText('По вашему запросу ничего не найдено', {
+                chat_id: chatId,
+                message_id: messageId,
+                reply_markup: options.reply_markup,
+            }).catch(error => {
+                console.error('Error editing message text:', error);
+            });
+            return;
+        }
+
+        let chunkedCompanies;
+        if (companies.length > 5) {
+            chunkedCompanies = chunkArray(companies, 5);
+        } else {
+            chunkedCompanies = chunkArray(companies, 1);
+        }
 
         const columns = chunkedCompanies.map(chunk => {
             return chunk.map(company => ({
@@ -306,25 +268,18 @@ async function search(chatId, messageId, category, region) {
             }));
         });
 
-        const inlineKeyboard = [];
+        const chunkedColumns = chunkArray(columns.flat(), 2); // Разбиваем все кнопки на пары
 
-        if (columns[0] && columns[1]) {
-            const maxLength = Math.max(columns[0].length, columns[1].length);
+        const inlineKeyboard = chunkedColumns.map(chunk => {
+            const row = [];
+            chunk.forEach(button => {
+                row.push(button);
+            });
+            return row;
+        });
 
-            for (let i = 0; i < maxLength; i++) {
-                const row = [];
-                if (columns[0][i]) {
-                    row.push(columns[0][i]);
-                }
-                if (columns[1][i]) {
-                    row.push(columns[1][i]);
-                }
-                inlineKeyboard.push(row);
-            }
-        }
-
-        inlineKeyboard.push([{ text: '⬅️', callback_data: 'beauty' }]);
-        inlineKeyboard.push([{ text: 'Остальные компании', url: `https://yoohive.pl/${category}` }]);
+        inlineKeyboard.push([{ text: 'Остальные компании', url: `https://yoohive.pl/${subcategory}` }]);
+        inlineKeyboard.push([{ text: '⬅️', callback_data: `category_${category}` }]);
 
         const options = {
             reply_markup: {
@@ -344,40 +299,31 @@ async function search(chatId, messageId, category, region) {
     }
 }
 
-async function sendCategoriesKeyboard_API(chatId, messageId) {
-    const apiUrl = `https://yoohive-api-test-version.onrender.com/api/category/all`;
-    function chunkArray(array, size) {
-        const chunkedArr = [];
-        for (let i = 0; i < array.length; i += size) {
-            chunkedArr.push(array.slice(i, i + size));
-        }
-        return chunkedArr;
-    }
+async function sendSubCategoriesKeyboard(chatId, messageId, category) {
+    const apiUrl = `${urlAPI}/api/category/sub/${category}`;
+
     switch (selMsg){
         case 'ru':
             try {
                 const response = await axios.get(apiUrl);
-                const categories = response.data.slice(0, 9);
-                console.log(categories)
-                const categoryNames = categories.map(category => category.name);
-                const categoryNamesString = categoryNames.join(',');
-                console.log(categoryNamesString);
-                const apiTranslate = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=eng&tl=ru&q=${categoryNamesString}`;
+                const subcategories = response.data
+                console.log(subcategories)
+
+                const apiTranslate = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=eng&tl=ru&q=${subcategories}`;
                 const translate = await axios.get(apiTranslate);
                 const trans = translate.data;
                 const translatedNames = trans[0][0][0].split(',');
                 console.log(translatedNames)
-                const chunkedServices = chunkArray(categoryNames, 2);
+                const chunkedServices = chunkArray(subcategories, 2);
                 const inlineKeyboard = chunkedServices
                     .map((column, columnIndex) => {
                         return column
-                            .filter(service => service !== 'withoutCategory')
                             .map((service, index) => ({
                                 text: translatedNames[columnIndex * 2 + index],
-                                callback_data: `category_${service.trim()}`,
+                                callback_data: `subcategory_${service.trim()}`,
                             }));
                     });
-                inlineKeyboard.push([{ text: '⬅️ Назад к выбору категории', callback_data: 'back_to_category_selection' }]);
+                inlineKeyboard.push([{ text: '⬅️ Назад к выбору подкатегории', callback_data: 'back_to_category_selection' }]);
                 const options = {
                     reply_markup: {
                         inline_keyboard: inlineKeyboard,
@@ -526,26 +472,40 @@ async function sendCategoriesKeyboard_API(chatId, messageId) {
     }
 }
 
-function sendCategoriesKeyboard(chatId, messageId) {
+async function sendCategoriesKeyboard(chatId, messageId) {
     let options;
+    const apiUrl = `${urlAPI}/api/category/all`;
     switch (selMsg) {
         case 'ru':
-            options = {
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: 'Красота', callback_data: 'beauty' }],
-                        [{ text: 'Здоровье', callback_data: 'health' }],
-                        [{ text: '⬅️ Назад к выбору региона', callback_data: 'back_to_region_selection' }],
-                    ]
-                }
-            };
-            bot.editMessageText('Выберите категорию', {
-                chat_id: chatId,
-                message_id: messageId,
-                reply_markup: options.reply_markup
-            }).catch(error => {
-                console.error('Error editing message text:', error);
-            });
+            try{
+                const response = await axios.get(apiUrl);
+                const categories = response.data;
+                const category = categories.map(category => category.name)
+                const apiTranslate = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=eng&tl=ru&q=${category}`;
+                const translate = await axios.get(apiTranslate);
+                const trans = translate.data;
+                const translatedNames = trans[0][0][0].split(',');
+                console.log(translatedNames)
+                const inlineKeyboard = categories.map((category, index) => {
+                    return [{ text: translatedNames[index], callback_data: `category_${category.name}` }];
+                });
+                inlineKeyboard.push([{ text: '⬅️ Назад к выбору региона', callback_data: 'back_to_region_selection' }]);
+
+                const options = {
+                    reply_markup: {
+                        inline_keyboard: inlineKeyboard
+                    }
+                };
+                bot.editMessageText('Выберите категорию', {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    reply_markup: options.reply_markup
+                }).catch(error => {
+                    console.error('Error editing message text:', error);
+                });
+            }catch (e) {
+                console.error(e)
+            }
             break;
         case 'pl':
             options = {
@@ -604,42 +564,22 @@ function sendCategoriesKeyboard(chatId, messageId) {
     }
 }
 
+const regions = [
+    'Mokotów', 'Ochota', 'Wola', 'Śródmieście', 'Żoliborz',
+    'Wesoła', 'Wilanów', 'Bemowo', 'Białołęka', 'Bielany',
+    'Rembertów', 'Targówek', 'Ursus', 'Ursynów', 'Wawer',
+    'Praga Południe', 'Praga Północ', 'Włochy', 'All'
+];
+
 function sendWarsawRegionsKeyboard(chatId, messageId) {
-    let keyboard = {
-        inline_keyboard: [
-            [
-                { text: 'Mokotów', callback_data: 'region_Mokotów' },
-                { text: 'Ochota', callback_data: 'region_Ochota' },
-                { text: 'Wola', callback_data: 'region_Wola' },
-                { text: 'Śródmieście', callback_data: 'region_Śródmieście' },
-                { text: 'Żoliborz', callback_data: 'region_Żoliborz' }
-            ],
-            [
-                { text: 'Wesoła', callback_data: 'region_Wesoła' },
-                { text: 'Wilanów', callback_data: 'region_Wilanów' },
-                { text: 'Bemowo', callback_data: 'region_bemowo' },
-                { text: 'Białołęka', callback_data: 'region_Białołęka' },
-                { text: 'Bielany', callback_data: 'region_Bielany' }
-            ],
-            [
-                { text: 'Rembertów', callback_data: 'region_Rembertów' },
-                { text: 'Targówek', callback_data: 'region_Targówek' },
-                { text: 'Ursus', callback_data: 'region_Ursus' },
-                { text: 'Ursynów', callback_data: 'region_Ursynów' },
-                { text: 'Wawer', callback_data: 'region_Wawer' }
-            ],
-            [
-                { text: 'Praga Południe', callback_data: 'region_Południe' },
-                { text: 'Praga Północ', callback_data: 'region_Północ' },
-                { text: 'Włochy', callback_data: 'region_Włochy' }
-            ],
-            [
-                { text: 'All', callback_data: 'region_all' }
-            ],
-            [
-                { text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }
-            ]
-        ]
+    const chunkedRegions = chunkArray(regions, 3);
+    const inlineKeyboard = chunkedRegions.map(chunk => {
+        return chunk.map(region => ({ text: region, callback_data: `region_${region}` }));
+    });
+    inlineKeyboard.push([{ text: '⬅️ Назад к выбору города', callback_data: 'back_to_city_selection' }]);
+
+    const keyboard = {
+        inline_keyboard: inlineKeyboard,
     };
 
     bot.editMessageReplyMarkup(keyboard, {
