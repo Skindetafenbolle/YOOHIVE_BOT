@@ -559,19 +559,19 @@ async function getCompanyByName(chatId, messageId, companyName, selMsg) {
             textBackToChooseCompany = '⬅️ Назад к выбору компании';
             break;
         case 'pl':
-            textGoToSiteCompany = 'Перейти на сайт компании';
+            textGoToSiteCompany = 'Przejdź na stronę internetową firmy';
             textBackToChooseCompany = '⬅️ Powrót do wyboru firmy';
             break;
         case 'uk':
-            textGoToSiteCompany = 'Перейти на сайт компании';
+            textGoToSiteCompany = 'Перейти на сайт компанії';
             textBackToChooseCompany = '⬅️ Назад до вибору компанії';
             break;
         case 'be':
-            textGoToSiteCompany = 'Перейти на сайт компании';
+            textGoToSiteCompany = 'Перайсці на старонку кампаніі';
             textBackToChooseCompany = '⬅️ Вярнуцца да выбару кампаніі';
             break;
         case 'eng':
-            textGoToSiteCompany = 'Перейти на сайт компании';
+            textGoToSiteCompany = 'Go to the company\'s website';
             textBackToChooseCompany = '⬅️ Back to company selection';
             break;
         default:
