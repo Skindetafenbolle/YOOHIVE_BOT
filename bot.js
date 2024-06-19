@@ -22,17 +22,17 @@ const regions = [
 ];
 
 function sendWelcomeMessage(chatId) {
-    const welcomeMessage = `🇵🇱 Wybierz język poniżej, aby kontynuować w języku polskim.\n\n` +
-        `🇧🇾 Выберыце мову ніжэй, каб працягнуць на беларускай мове.\n\n` +
-        `🇷🇺 Выберите язык ниже, чтобы продолжить на русском языке.\n\n` +
-        `🇺🇦 Виберіть мову нижче, щоб продовжити українською мовою.\n\n` +
-        `🇬🇧 Select a language below to continue in English.`;
+    const welcomeMessage = `Wybierz język poniżej, aby kontynuować w języku polskim.\n\n` +
+        `Выберыце мову ніжэй, каб працягнуць на беларускай мове.\n\n` +
+        `Выберите язык ниже, чтобы продолжить на русском языке.\n\n` +
+        `Виберіть мову нижче, щоб продовжити українською мовою.\n\n` +
+        `Select a language below to continue in English.`;
     bot.sendMessage(chatId, welcomeMessage, {
         reply_markup: {
             keyboard: [
-                ['🇬🇧 English','🇧🇾 Беларуская'],
-                ['🇷🇺 Русский','🇺🇦 Українська'],
-                ['🇵🇱 Polski']
+                ['English','Беларуская'],
+                ['Русский','Українська'],
+                ['Polski']
             ],
             one_time_keyboard: true,
             selective: true
@@ -52,23 +52,23 @@ bot.on('text', (msg) => {
     const selectedLanguage = msg.text.trim();
 
     switch (selectedLanguage) {
-        case '🇷🇺 Русский':
+        case 'Русский':
             selMsg = 'ru'
             sendCitySelectionKeyboard(chatId);
             break;
-        case '🇧🇾 Беларуская':
+        case 'Беларуская':
             selMsg = 'be'
             sendCitySelectionKeyboard(chatId);
             break;
-        case '🇵🇱 Polski':
+        case 'Polski':
             selMsg = 'pl'
             sendCitySelectionKeyboard(chatId);
             break;
-        case '🇺🇦 Українська':
+        case 'Українська':
             selMsg = 'uk'
             sendCitySelectionKeyboard(chatId);
             break;
-        case '🇬🇧 English':
+        case 'English':
             selMsg = 'eng'
             sendCitySelectionKeyboard(chatId);
             break;
@@ -119,6 +119,7 @@ bot.on('callback_query', (callbackQuery) => {
         getCompanyByName(chatId, messageId, companyName, selMsg);
     } else if (data.startsWith('category_')) {
         category = data.replace('category_', '');
+        console.log(category);
         sendSubCategoriesKeyboard(chatId, messageId, category, selMsg);
     } else if (data.startsWith('subcategory_')) {
         subcategory = data.replace('subcategory_', '');
@@ -245,46 +246,50 @@ async function sendWarsawRegionsKeyboard(chatId, messageId, selMsg) {
 }
 
 async function sendCategoriesKeyboard(chatId, messageId, selMsg) {
-    const apiUrl = `${urlAPI}/api/category/all`;
+    const apiUrl = `${urlAPI}/api/category/all?lang=${selMsg}`;
     let textBackToRegionSelection = '';
     let textChooseCategory = '';
+
     switch (selMsg) {
         case 'ru':
-            textBackToRegionSelection = '⬅️ Назад к выбору региона'
+            textBackToRegionSelection = '⬅️ Назад к выбору региона';
             textChooseCategory = 'Выберите категорию';
             break;
         case 'pl':
-            textBackToRegionSelection = '⬅️ Powrót do wyboru dzielnicy'
+            textBackToRegionSelection = '⬅️ Powrót do wyboru dzielnicy';
             textChooseCategory = 'Wybierz kategorię';
             break;
         case 'uk':
-            textBackToRegionSelection = '⬅️ Назад до вибору регіону'
+            textBackToRegionSelection = '⬅️ Назад до вибору регіону';
             textChooseCategory = 'Виберіть категорію';
             break;
         case 'be':
-            textBackToRegionSelection = '️ ️⬅️ Вярнуцца да выбару рэгіёну'
+            textBackToRegionSelection = '️⬅️ Вярнуцца да выбару рэгіёну';
             textChooseCategory = 'Выберыце катэгорыю';
             break;
         case 'eng':
-            textBackToRegionSelection = '⬅️ Back to selecting a district'
+            textBackToRegionSelection = '⬅️ Back to selecting a district';
             textChooseCategory = 'Select a category';
             break;
         default:
             break;
     }
 
-
-    try{
+    try {
         const response = await axios.get(apiUrl);
         const categories = response.data;
-        const category = categories.map(category => category.name)
-        const apiTranslate = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=eng&tl=${selMsg}&q=${category}`;
-        const translate = await axios.get(apiTranslate);
-        const trans = translate.data;
-        const translatedNames = trans[0][0][0].split(',');
-        const inlineKeyboard = categories.map((category, index) => {
-            return [{ text: translatedNames[index], callback_data: `category_${category.name}` }];
+
+        const categoriesName = categories.map((cat) => cat.name)
+        const categoriesSlug = categories.map((cat) => cat.slug)
+        const chunkedSub = chunkArray(categoriesName, 3);
+        const inlineKeyboard = chunkedSub.map((column, columnIndex) => {
+            return column.map((category, index) => ({
+                text: categoriesName[columnIndex * 3 + index],
+                callback_data: `category_${categoriesSlug[columnIndex * 3 + index]}`,
+            }));
         });
+
+
         inlineKeyboard.push([{ text: textBackToRegionSelection, callback_data: 'back_to_region_selection' }]);
 
         const options = {
@@ -292,6 +297,7 @@ async function sendCategoriesKeyboard(chatId, messageId, selMsg) {
                 inline_keyboard: inlineKeyboard
             }
         };
+
         bot.editMessageText(textChooseCategory, {
             chat_id: chatId,
             message_id: messageId,
@@ -299,14 +305,14 @@ async function sendCategoriesKeyboard(chatId, messageId, selMsg) {
         }).catch(error => {
             console.error('Error editing message text:', error);
         });
-    }catch (e) {
-        console.error(e)
+    } catch (e) {
+        console.error(e);
     }
-
 }
 
+
 async function sendSubCategoriesKeyboard(chatId, messageId, category, selMsg) {
-    const apiUrl = `${urlAPI}/api/category/sub/${category}`;
+    const apiUrl = `${urlAPI}/api/category/sub/${category}?lang=${selMsg}`;
     let textChooseCategory = '';
     let textBackToCategorySelection = '';
 
@@ -338,19 +344,18 @@ async function sendSubCategoriesKeyboard(chatId, messageId, category, selMsg) {
     try {
         const response = await axios.get(apiUrl);
         const subcategories = response.data;
-
-        const apiTranslate = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=eng&tl=${selMsg}&q=${subcategories}`;
-        const translate = await axios.get(apiTranslate);
-        const trans = translate.data;
-        const translatedNames = trans[0][0][0].split(',');
-        const chunkedServices = chunkArray(subcategories, 2);
-        const inlineKeyboard = chunkedServices.map((column, columnIndex) => {
-            return column.map((service, index) => ({
-                text: translatedNames[columnIndex * 2 + index],
-                callback_data: `subcategory_${service.trim()}`,
+        const subcategoriesName = subcategories.map((sub) => sub.name)
+        const subcategoriesSlug = subcategories.map((sub) => sub.slug)
+        const chunkedSubCat = chunkArray(subcategoriesName, 3);
+        const inlineKeyboard = chunkedSubCat.map((column, columnIndex) => {
+            return column.map((subcategory, index) => ({
+                text: subcategoriesName[columnIndex * 3 + index],
+                callback_data: `subcategory_${subcategoriesSlug[columnIndex * 3 + index]}`,
             }));
         });
+
         inlineKeyboard.push([{ text: textBackToCategorySelection, callback_data: 'back_to_category_selection' }]);
+
         const options = {
             reply_markup: {
                 inline_keyboard: inlineKeyboard,
@@ -365,12 +370,13 @@ async function sendSubCategoriesKeyboard(chatId, messageId, category, selMsg) {
             console.error('Error editing message text:', error);
         });
     } catch (error) {
-        console.error('Error fetching categories:', error);
+        console.error('Error fetching subcategories:', error);
     }
 }
 
+
 async function sendSpecialTags(chatId, messageId, selMsg){
-    let apiUrl = `${urlAPI}/api/tag/all`;
+    let apiUrl = `${urlAPI}/api/tag/all?languageCode=${selMsg}`;
     let textBackToSubCategorySelection = '';
     let textSkipChooseTag = '';
     let textChooseSubCategory = '';
@@ -406,20 +412,14 @@ async function sendSpecialTags(chatId, messageId, selMsg){
     try {
         const response = await axios.get(apiUrl);
         const tags = response.data;
-        const filteredTags = tags
-            .filter(tag => !['polski', 'russian', 'english', 'belarusian', 'ukrainian', 'another', 'petfriendly', 'Przyjazne dla dzieci'].includes(tag.name))
-            .map(tag => tag.name);
-        console.log(filteredTags);
-        const apiTranslate = `https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=pl&tl=${selMsg}&q=${filteredTags}`;
-        const translate = await axios.get(apiTranslate);
-        const trans = translate.data;
-        const translatedTags = trans[0][0][0].split(',');
-        console.log(translatedTags)
-        const chunkedTags = chunkArray(filteredTags, 3);
-        const inlineKeyboard = chunkedTags.map((column, columnIndex) => {
-            return column.map((tag, index) => ({
-                text: translatedTags[columnIndex * 3 + index],
-                callback_data: `tag_${tag.trim()}`,
+        const tagsName = tags.map((tag) => tag.name)
+        const tagsSlug = tags.map((tag) => tag.slug)
+        const chunkedSubTag = chunkArray(tagsName, 3);
+        console.log(tagsName)
+        const inlineKeyboard = chunkedSubTag.map((column, columnIndex) => {
+            return column.map((subcategory, index) => ({
+                text: tagsName[columnIndex * 3 + index],
+                callback_data: `subcategory_${tagsSlug[columnIndex * 3 + index]}`,
             }));
         });
         inlineKeyboard.push([{ text: textSkipChooseTag, callback_data: `tag_none` }]);
@@ -597,7 +597,7 @@ async function getCompanyByName(chatId, messageId, companyName, selMsg) {
             messageText += `☎️ ${phoneNumbers}\n`;
             if (images && images.value && images.value.length > 0) {
                 const imageUrl = images.value[0];
-                messageText += `Фото: [Изображение](${imageUrl})\n`;
+                messageText += `[ᅠ ᅠ](${imageUrl})\n`;
             }
             if (socialMediaMetadata && socialMediaMetadata.value && socialMediaMetadata.value.length > 0) {
                 insta = socialMediaMetadata.value.find(link => link.includes('instagram.com'));
